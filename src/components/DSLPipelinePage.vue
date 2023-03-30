@@ -15,21 +15,22 @@
 
       <v-expansion-panels
           v-model="panel"
-          v-for="(pipe,idx) in pipeline" v-bind:key="pipe"
           multiple
       >
-        <v-expansion-panel :value="idx"
-                           @drop.prevent="onDrop($event, idx)"
-                           @dragenter.prevent
-                           @dragover.prevent>
-          <v-container fluid class="pa-0" @dragstart="startDrag($event, pipe, idx)"
+        <v-expansion-panel
+            v-for="(pipe,idx) in getPipeLine()" v-bind:key="pipe"
+            @drop.prevent="onDrop($event, idx)"
+            @dragenter.prevent
+            @dragover.prevent>
+          <v-container fluid class="pa-0" @dragstart="startDrag($event, idx)"
                        draggable="true">
             <v-expansion-panel-title>
               <p>{{ pipe.command }}</p>
               <v-spacer/>
-              <ButtonPlusMinus v-on:click="minusPipe(idx)" :icon="false"></ButtonPlusMinus>
+              <ButtonPlusMinus v-on:click="removePipe(pipe.id)" :icon="false" :disabled="idx===0"></ButtonPlusMinus>
             </v-expansion-panel-title>
             <v-expansion-panel-text>
+
               <v-select
                   v-model="pipe.command"
                   :items="commands"
@@ -37,16 +38,21 @@
               ></v-select>
 
               <div class="pl-5 pr-5 pt-2 pb-2 mb-10 border-md">
-                <FieldsCard v-if="pipe.command==='fields'" ref="commandCard"/>
-                <TypecastCard v-if="pipe.command==='typecast'" ref="commandCard"/>
-                <SortCard v-if="pipe.command==='sort'" ref="commandCard"/>
-                <TopCard v-if="pipe.command==='top'" ref="commandCard"/>
+<!--                <component v-bind:is="getComponent"></component>-->
+<!--                                <component v-bind:is="pipe.component" v-bind:module-name="`${pipe.command}-${pipe.id}`"-->
+<!--                                           ref="commandCard"></component>-->
+                <FieldsCard v-if="pipe.command==='fields'" :module-type="1"
+                            :module-name="`${pipe.command}-${pipe.id}`"/>
+                <TypecastCard v-if="pipe.command==='typecast'" :module-type="1"
+                              :module-name="`${pipe.command}-${pipe.id}`"/>
+                <SortCard v-if="pipe.command==='sort'" :module-type="1" :module-name="`${pipe.command}-${pipe.id}`"/>
+                <TopCard v-if="pipe.command==='top'" :module-type="1" :module-name="`${pipe.command}-${pipe.id}`"/>
               </div>
             </v-expansion-panel-text>
           </v-container>
         </v-expansion-panel>
       </v-expansion-panels>
-      <ButtonPlusMinus v-on:click="addPipe" :icon="true"></ButtonPlusMinus>
+      <ButtonPlusMinus v-on:click="addNewPipe" :icon="true"></ButtonPlusMinus>
     </div>
     <div>
       <v-btn class="mb-2" rounded="lg" color="primary" v-on:click="generate">명령어 구문 생성 하기</v-btn>
@@ -66,12 +72,8 @@ import TypecastCard from "@/components/commands/TypecastCard";
 import SortCard from "@/components/commands/SortCard";
 import TopCard from "@/components/commands/TopCard";
 import ButtonPlusMinus from "@/components/ButtonPlusMinus";
-
-export function uuidV4() {
-  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
-      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-  )
-}
+import {uuidV4, isEmpty} from "@/util/functions";
+import {mapGetters, mapMutations} from "vuex";
 
 export default {
   name: "HomePage",
@@ -93,50 +95,42 @@ export default {
         'top',
       ],
       generatedSyntax: "",
-      panel: [0],
+      panel: [],
     }
   },
+  computed: {
+    ...mapGetters(['getPipeLine']),
+  },
   methods: {
+    ...mapMutations(['addPipe', 'removePipe']),
+    addNewPipe() {
+      this.addPipe()
+      this.panel.push(this.getPipeLine().length - 1)
+    },
     generate() {
       const generatedList = [];
-      for (let i = 0; i < this.$refs.commandCard.length; i++) {
-        generatedList.push(this.$refs.commandCard[i].makeCommand)
+      for (let pipe of this.getPipeLine()) {
+        generatedList.push(this.$store.getters[`${pipe.command}-${pipe.id}/generate`])
       }
-      this.generatedSyntax = generatedList.join(' | ')
+      console.log(generatedList)
+      this.generatedSyntax = generatedList.filter(x => !isEmpty(x)).join(' | ')
     },
     all() {
-      this.panel = [...this.pipeline.keys()]
+      this.panel = [...this.getPipeLine().keys()]
+      console.log(this.panel)
     },
     none() {
       this.panel = []
     },
-    addPipe() {
-      this.pipeline.push({id: uuidV4(), command: null})
-      this.panel.push(this.pipeline.length - 1)
-    },
-    minusPipe(idx) {
-      if (idx > 0) this.pipeline.splice(idx, 1)
-    },
-    startDrag(event, item) {
+    startDrag(event, idx) {
       event.dataTransfer.dropEffect = "move"
       event.dataTransfer.effectAllowed = "move"
-      event.dataTransfer.setData("selectedItem", item.id)
+      event.dataTransfer.setData("selectedIdx", idx)
     },
     onDrop(event, idx) {
-      const selectedItem = event.dataTransfer.getData("selectedItem")
-
-      let targetIdx
-      let targetItem
-      this.pipeline.forEach((obj, index) => {
-        if (obj.id === selectedItem) {
-          targetIdx = index
-          targetItem = obj
-        }
-      })
-      console.info(idx + "  " + targetIdx)
-      console.info(targetItem.id + "  " + this.pipeline.map(x => x.id).join(','))
-      this.pipeline.splice(targetIdx, 1)
-      this.pipeline.splice(idx, 0, targetItem)
+      console.log(idx)
+      const selectedIdx = event.dataTransfer.getData("selectedIdx")
+      this.$store.commit('switchPipe', {selectedIdx: selectedIdx, targetIdx: idx})
     }
   },
 }

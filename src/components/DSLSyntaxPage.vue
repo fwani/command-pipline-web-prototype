@@ -7,10 +7,10 @@
     ></v-select>
 
     <div class="pl-5 pr-5 pt-2 pb-2 mb-10 border-md">
-      <FieldsCard v-if="command==='fields'" ref="commandCard"/>
-      <TypecastCard v-if="command==='typecast'" ref="commandCard"/>
-      <SortCard v-if="command==='sort'" ref="commandCard"/>
-      <TopCard v-if="command==='top'" ref="commandCard"/>
+      <FieldsCard v-if="command==='fields'" :module-type="0" :module-name="command"/>
+      <TypecastCard v-if="command==='typecast'" :module-type="0" :module-name="command"/>
+      <SortCard v-if="command==='sort'" :module-type="0" :module-name="command"/>
+      <TopCard v-if="command==='top'" :module-type="0" :module-name="command"/>
     </div>
 
     <div>
@@ -54,7 +54,7 @@ export default {
   },
   methods: {
     generate() {
-      this.generatedSyntax = this.$refs.commandCard.makeCommand
+      this.generatedSyntax = this.$store.getters[`${this.command}/generate`]
     }
   },
 }

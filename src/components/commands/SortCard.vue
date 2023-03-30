@@ -4,13 +4,13 @@
 
   <div class="pl-5 pr-5 pt-2 pb-2 mb-10 border-md">
     <h3 class="text-left pb-10">그룹 필드</h3>
-    <div v-for="(field,idx) in groupFields" v-bind:key="field">
+    <div v-for="(field,idx) in getGroupFields" v-bind:key="field">
       <v-row>
         <v-col>
           <v-text-field label="필드명 입력" v-model="field.name"></v-text-field>
         </v-col>
         <v-col cols="1">
-          <ButtonPlusMinus v-if="idx!==0" v-on:click="minusGroupField(idx)" :icon="false"></ButtonPlusMinus>
+          <ButtonPlusMinus v-if="idx!==0" v-on:click="removeGroupField(idx)" :icon="false"></ButtonPlusMinus>
         </v-col>
       </v-row>
     </div>
@@ -18,7 +18,7 @@
   </div>
   <div class="pl-5 pr-5 pt-2 pb-2 mb-10 border-md">
     <h3 class="text-left pb-10">정렬 필드</h3>
-    <div v-for="(field,idx) in sortedFields" v-bind:key="field">
+    <div v-for="(field,idx) in getSortedFields" v-bind:key="field">
       <v-row>
         <v-col cols="8">
           <v-text-field label="필드명 입력" v-model="field.name"></v-text-field>
@@ -30,7 +30,7 @@
           </v-radio-group>
         </v-col>
         <v-col cols="1">
-          <ButtonPlusMinus v-if="idx!==0" v-on:click="minusSortedField(idx)" :icon="false"></ButtonPlusMinus>
+          <ButtonPlusMinus v-if="idx!==0" v-on:click="removeSortedField(idx)" :icon="false"></ButtonPlusMinus>
 
         </v-col>
       </v-row>
@@ -41,51 +41,74 @@
 
 <script>
 import ButtonPlusMinus from "@/components/ButtonPlusMinus";
+import sortModule from "@/store/module/sortModule";
 
 export default {
   name: "FieldsCard",
   components: {ButtonPlusMinus},
+  props: {
+    moduleName: {
+      type: String,
+      required: true
+    },
+    moduleType: {
+      type: Number,
+      default: 0  // 0: syntax, 1: pipeline
+    }
+  },
   data: () => {
     return {
-      sortedFields: [{name: "", direction: "+"}],
-      groupFields: [{name: ""}],
       limit: null,
+    }
+  },
+  mounted() {
+    this.limit = this.getLimit
+  },
+  created() {
+    console.log("SortCard created : " + this.moduleName)
+    if (!this.$store.hasModule(this.moduleName)) {
+      console.log("Add SortModule")
+      this.$store.registerModule(this.moduleName, sortModule)
+    }
+    if (this.moduleType === 0) {
+      this.$store.commit('addCommandForSyntax', {
+        command: this.moduleName,
+      })
+    } else {
+      this.$store.commit('updatePipe', {
+        moduleName: this.moduleName,
+        command: 'sort',
+      })
     }
   },
   methods: {
     addSortedField() {
-      this.sortedFields.push({name: "", direction: "+"})
+      this.$store.commit(this.moduleName + '/addSortedField')
     },
     addGroupField() {
-      this.groupFields.push({name: ""})
+      this.$store.commit(this.moduleName + '/addGroupField')
     },
-    minusSortedField(idx) {
-      if (idx > 0) this.sortedFields.splice(idx, 1)
+    removeSortedField(idx) {
+      this.$store.commit(this.moduleName + '/removeSortedField', idx)
     },
-    minusGroupField(idx) {
-      if (idx > 0) this.groupFields.splice(idx, 1)
+    removeGroupField(idx) {
+      this.$store.commit(this.moduleName + '/removeGroupField', idx)
     },
-    generate() {
-      this.$emit('generated-syntax', this.makeCommand)
-    }
   },
   computed: {
-    makeCommand() {
-      const selectedFields = this.sortedFields.filter(x => x.name !== "");
-      if (selectedFields.length === 0) return ""
-
-      let command = "sort ";
-      if (this.limit !== null && this.limit >= 0)
-        command += this.limit + " "
-
-      command += selectedFields.map(x => {
-        return x.direction + "`" + x.name + "`"
-      }).join(", ")
-
-      const groupFields = this.groupFields.filter(x => x.name !== "");
-      if (groupFields.length > 0)
-        command += " by " + groupFields.map(x => x.name).join(", ")
-      return command
+    getSortedFields() {
+      return this.$store.getters[this.moduleName + '/getSortedFields']
+    },
+    getGroupFields() {
+      return this.$store.getters[this.moduleName + '/getGroupFields']
+    },
+    getLimit() {
+      return this.$store.getters[this.moduleName + '/getLimit']
+    },
+  },
+  watch: {
+    limit: function (limit) {
+      this.$store.commit(this.moduleName + '/updateLimit', limit)
     }
   }
 }

@@ -30,6 +30,16 @@ import ButtonPlusMinus from "@/components/ButtonPlusMinus";
 export default {
   name: "FieldsCard",
   components: {ButtonPlusMinus},
+  props: {
+    moduleName: {
+      type: String,
+      required: true
+    },
+    moduleType: {
+      type: Number,
+      default: 0  // 0: syntax, 1: pipeline
+    }
+  },
   data: () => {
     return {
       irisTypes: ['TEXT', 'INTEGER', 'BIGINT', 'REAL', 'TIMESTAMP', 'DATE'],

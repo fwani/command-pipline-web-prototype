@@ -17,6 +17,16 @@
 <script>
 export default {
   name: "FieldsCard",
+  props: {
+    moduleName: {
+      type: String,
+      required: true
+    },
+    moduleType: {
+      type: Number,
+      default: 0  // 0: syntax, 1: pipeline
+    }
+  },
   data: () => {
     return {
       sortedField: {name: "", direction: "+"},
